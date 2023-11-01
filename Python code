@@ -1,0 +1,45 @@
+import pandas as pd
+from sklearn.model_selection import train_test_split
+from sklearn.feature_extraction.text import CountVectorizer
+from sklearn.feature_extraction.text import TfidfTransformer
+from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score
+from sklearn.pipeline import Pipeline
+import re
+from sklearn.metrics import confusion_matrix
+import matplotlib.pyplot as plt
+from nltk.corpus import stopwords
+pip install nltk
+import nltk
+nltk.download('stopwords')
+df_fake = pd.read_csv('fake.csv')
+df_true = pd.read_csv('true.csv')
+df = pd.concat([df_fake, df_true]).sample(frac=1).reset_index(drop=True)
+X_train, X_test, y_train, y_test = train_test_split(df['text'], df['label'], test_size=0.2, random_state=42)
+def clean_text(text):
+    text = re.sub(r'\n|\r', ' ', text)
+    text = re.sub(r'[^a-z A-Z]', ' ', text)
+    text = " ".join([word for word in text.split() if word not in set(stopwords.words('english'))])
+    return text
+text_clf = Pipeline([
+    ('vect', CountVectorizer(ngram_range=(1, 2), stop_words='english')),
+    ('tfidf', TfidfTransformer()),
+    ('clf', MultinomialNB())
+])
+text_clf.fit(X_train, y_train)
+y_pred = text_clf.predict(X_test)
+print('Accuracy: ', accuracy_score(y_test, y_pred))
+print(confusion_matrix(y_test, y_pred))
+plt.figure(figsize=(10,7))
+sns.heatmap(confusion_matrix(y_test, y_pred), annot=True, cmap='Blues')
+plt.show()
+def check_news(news):
+    pred = text_clf.predict([clean_text(news)] * 10)
+    if pred[0] == 0:
+        print("The news article is likely fake.")
+    elif pred[0] == 1:
+        print("The news article is likely real.")
+    else:
+        print("An error occurred while processing the news article.")
+news =input("Enter the article: ")
+check_news(news)
